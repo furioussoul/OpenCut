@@ -109,6 +109,30 @@ const handleSplit = () => editor.timeline.splitElements({ ... });
 
 Direct `editor.xxx()` calls are for internal use (commands, tests, complex multi-step operations).
 
+## Remotion System (Dynamic Components)
+
+The Remotion module handles AI-generated dynamic components with a high-decoupling architecture.
+
+### Module Structure
+
+```
+src/lib/remotion/
+├── types.ts           # Schema definitions (EditableProp, ComponentMeta)
+├── registry.ts        # Component & Metadata registration/lookup
+└── bridge/
+    └── time-sync.ts   # Core logic: converts global time to Remotion Frame/FPS
+```
+
+### Key Principles
+
+1. **Schema-Driven UI**: Components define `editableProps` in metadata. The `RemotionProperties` panel automatically generates UI controls (Slider, ColorPicker, etc.) based on these types.
+2. **Hybrid Rendering**:
+   - **Preview**: `RemotionOverlay` renders real React/Remotion components for 60fps interaction.
+   - **Export**: `RemotionNode` (Canvas) draws pre-rendered frames from a `frameCache`.
+3. **Internal Bootstrap (Self-Bootstrap)**:
+   - **Canvas Space**: Handles spatial transforms (drag position/scale).
+   - **Side Panel**: Handles content attributes (text, colors, booleans).
+
 ## Commands System
 
 Commands handle undo/redo. They live in `@/lib/commands/` organized by domain (timeline, media, scene).

@@ -21,6 +21,9 @@ export const TRACK_COLORS: Record<TrackType, { background: string }> = {
 	sticker: {
 		background: "bg-amber-500",
 	},
+	remotion: {
+		background: "bg-purple-500",
+	},
 } as const;
 
 export const TRACK_HEIGHTS: Record<TrackType, number> = {
@@ -28,6 +31,7 @@ export const TRACK_HEIGHTS: Record<TrackType, number> = {
 	text: 25,
 	audio: 50,
 	sticker: 50,
+	remotion: 50,
 } as const;
 
 export const TRACK_GAP = 4;
@@ -67,5 +71,8 @@ export const TRACK_ICONS: Record<TrackType, React.ReactNode> = {
 			icon={Happy01Icon}
 			className="text-muted-foreground size-4 shrink-0"
 		/>
+	),
+	remotion: (
+		<span className="text-muted-foreground size-4 shrink-0 flex items-center justify-center text-xs">✨</span>
 	),
 } as const;

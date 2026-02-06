@@ -86,7 +86,9 @@ export function buildEmptyTrack({
 					? "Audio track"
 					: type === "sticker"
 						? "Sticker track"
-						: "Track");
+						: type === "remotion"
+							? "Remotion track"
+							: "Track");
 
 	switch (type) {
 		case "video":
@@ -123,6 +125,14 @@ export function buildEmptyTrack({
 				elements: [],
 				muted: false,
 			};
+		case "remotion":
+			return {
+				id,
+				name: trackName,
+				type: "remotion",
+				elements: [],
+				hidden: false,
+			} as TimelineTrack;
 		default:
 			throw new Error(`Unsupported track type: ${type}`);
 	}
@@ -215,6 +225,7 @@ export function canElementGoOnTrack({
 	if (elementType === "text") return trackType === "text";
 	if (elementType === "audio") return trackType === "audio";
 	if (elementType === "sticker") return trackType === "sticker";
+	if (elementType === "remotion") return trackType === "remotion";
 	if (elementType === "video" || elementType === "image") {
 		return trackType === "video";
 	}

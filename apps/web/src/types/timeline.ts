@@ -8,7 +8,7 @@ export interface TScene {
 	updatedAt: Date;
 }
 
-export type TrackType = "video" | "text" | "audio" | "sticker";
+export type TrackType = "video" | "text" | "audio" | "sticker" | "remotion";
 
 interface BaseTrack {
 	id: string;
@@ -41,7 +41,13 @@ export interface StickerTrack extends BaseTrack {
 	hidden: boolean;
 }
 
-export type TimelineTrack = VideoTrack | TextTrack | AudioTrack | StickerTrack;
+export interface RemotionTrack extends BaseTrack {
+	type: "remotion";
+	elements: RemotionElement[];
+	hidden: boolean;
+}
+
+export type TimelineTrack = VideoTrack | TextTrack | AudioTrack | StickerTrack | RemotionTrack;
 
 export interface Transform {
 	scale: number;
@@ -122,12 +128,24 @@ export interface StickerElement extends BaseTimelineElement {
 	color?: string;
 }
 
+export interface RemotionElement extends BaseTimelineElement {
+	type: "remotion";
+	componentId: string;
+	props: Record<string, unknown>;
+	hidden?: boolean;
+	transform: Transform;
+	opacity: number;
+	/** AI 生成的源代码（可选，用于重新编辑） */
+	sourceCode?: string;
+}
+
 export type TimelineElement =
 	| AudioElement
 	| VideoElement
 	| ImageElement
 	| TextElement
-	| StickerElement;
+	| StickerElement
+	| RemotionElement;
 
 export type ElementType = TimelineElement["type"];
 
@@ -140,12 +158,14 @@ export type CreateVideoElement = Omit<VideoElement, "id">;
 export type CreateImageElement = Omit<ImageElement, "id">;
 export type CreateTextElement = Omit<TextElement, "id">;
 export type CreateStickerElement = Omit<StickerElement, "id">;
+export type CreateRemotionElement = Omit<RemotionElement, "id">;
 export type CreateTimelineElement =
 	| CreateAudioElement
 	| CreateVideoElement
 	| CreateImageElement
 	| CreateTextElement
-	| CreateStickerElement;
+	| CreateStickerElement
+	| CreateRemotionElement;
 
 // ---- Drag State ----
 

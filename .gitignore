@@ -15,3 +15,6 @@ bun.lockb
 
 # Twiggy
 .cursor/rules/file-structure.mdc
+.history
+bun.lock
+.idea

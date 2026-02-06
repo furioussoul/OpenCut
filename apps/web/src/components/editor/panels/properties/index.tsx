@@ -4,6 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { AudioProperties } from "./audio-properties";
 import { VideoProperties } from "./video-properties";
 import { TextProperties } from "./text-properties";
+import { RemotionProperties } from "./remotion-properties";
 import { HugeiconsIcon } from "@hugeicons/react";
 import { Settings05Icon } from "@hugeicons/core-free-icons";
 import { useEditor } from "@/hooks/use-editor";
@@ -36,6 +37,13 @@ export function PropertiesPanel() {
 							return (
 								<div key={element.id}>
 									<VideoProperties _element={element} />
+								</div>
+							);
+						}
+						if (element.type === "remotion") {
+							return (
+								<div key={element.id}>
+									<RemotionProperties element={element} trackId={track.id} />
 								</div>
 							);
 						}

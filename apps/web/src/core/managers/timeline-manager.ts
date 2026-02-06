@@ -20,6 +20,7 @@ import {
 	ToggleElementsVisibilityCommand,
 	ToggleElementsMutedCommand,
 	UpdateTextElementCommand,
+	UpdateRemotionElementCommand,
 	SplitElementsCommand,
 	PasteCommand,
 	UpdateElementStartTimeCommand,
@@ -225,6 +226,36 @@ export class TimelineManager {
 	}): void {
 		const command = new UpdateTextElementCommand(trackId, elementId, updates);
 		this.editor.command.execute({ command });
+	}
+
+	/**
+	 * 更新 Remotion 元素属性
+	 * @param trackId 轨道 ID
+	 * @param elementId 元素 ID
+	 * @param updates 要更新的属性（props, transform, opacity）
+	 * @param pushHistory 是否推入撤销历史（拖动过程中为 false，拖动结束时为 true）
+	 */
+	updateRemotionElement({
+		trackId,
+		elementId,
+		updates,
+		pushHistory = true,
+	}: {
+		trackId: string;
+		elementId: string;
+		updates: Partial<{
+			props: Record<string, unknown>;
+			transform: { scale: number; position: { x: number; y: number }; rotate: number };
+			opacity: number;
+		}>;
+		pushHistory?: boolean;
+	}): void {
+		const command = new UpdateRemotionElementCommand(trackId, elementId, updates);
+		if (pushHistory) {
+			this.editor.command.execute({ command });
+		} else {
+			command.execute();
+		}
 	}
 
 	duplicateElements({

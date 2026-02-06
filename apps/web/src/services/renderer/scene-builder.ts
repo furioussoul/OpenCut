@@ -5,6 +5,7 @@ import { VideoNode } from "./nodes/video-node";
 import { ImageNode } from "./nodes/image-node";
 import { TextNode } from "./nodes/text-node";
 import { StickerNode } from "./nodes/sticker-node";
+import { RemotionNode } from "./nodes/remotion-node";
 import { ColorNode } from "./nodes/color-node";
 import { BlurBackgroundNode } from "./nodes/blur-background-node";
 import type { TBackground, TCanvasSize } from "@/types/project";
@@ -17,10 +18,12 @@ export type BuildSceneParams = {
 	mediaAssets: MediaAsset[];
 	duration: number;
 	background: TBackground;
+	/** 预渲染的 Remotion 帧缓存，key 为 element.id */
+	remotionFrameCaches?: Map<string, Map<number, ImageBitmap>>;
 };
 
 export function buildScene(params: BuildSceneParams) {
-	const { tracks, mediaAssets, duration, canvasSize, background } = params;
+	const { tracks, mediaAssets, duration, canvasSize, background, remotionFrameCaches } = params;
 
 	const rootNode = new RootNode({ duration });
 	const mediaMap = new Map(mediaAssets.map((m) => [m.id, m]));
@@ -101,6 +104,24 @@ export function buildScene(params: BuildSceneParams) {
 						transform: element.transform,
 						opacity: element.opacity,
 						color: element.color,
+					}),
+				);
+			}
+
+			if (element.type === "remotion") {
+				// 获取此元素的预渲染帧缓存
+				const frameCache = remotionFrameCaches?.get(element.id);
+				contentNodes.push(
+					new RemotionNode({
+						componentId: element.componentId,
+						props: element.props,
+						duration: element.duration,
+						startTime: element.startTime,
+						trimStart: element.trimStart,
+						trimEnd: element.trimEnd,
+						transform: element.transform,
+						opacity: element.opacity,
+						frameCache,
 					}),
 				);
 			}

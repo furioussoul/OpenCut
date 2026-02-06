@@ -1,9 +1,11 @@
 import type { EditorCore } from "@/core";
 import type { RootNode } from "@/services/renderer/nodes/root-node";
 import type { ExportOptions, ExportResult } from "@/types/export";
+import type { RemotionElement, TimelineTrack } from "@/types/timeline";
 import { SceneExporter } from "@/services/renderer/scene-exporter";
 import { buildScene } from "@/services/renderer/scene-builder";
 import { createTimelineAudioBuffer } from "@/lib/media/audio";
+import { prerenderAllRemotionElements } from "@/services/renderer/remotion-frame-renderer";
 
 export class RendererManager {
 	private renderTree: RootNode | null = null;
@@ -55,12 +57,44 @@ export class RendererManager {
 				});
 			}
 
+			// 预渲染 Remotion 组件帧
+			const remotionElements = this.collectRemotionElements(tracks);
+			let remotionFrameCaches: Map<string, Map<number, ImageBitmap>> | undefined;
+
+			console.log(`📊 Remotion 元素检测: 找到 ${remotionElements.length} 个元素`);
+			for (const el of remotionElements) {
+				console.log(`  - ${el.id}: ${el.componentId}, duration: ${el.duration}s`);
+			}
+
+			if (remotionElements.length > 0) {
+				onProgress?.({ progress: 0.08 });
+				console.log(`🎬 开始预渲染 ${remotionElements.length} 个 Remotion 组件...`);
+
+				remotionFrameCaches = await prerenderAllRemotionElements({
+					elements: remotionElements,
+					fps: exportFps,
+					canvasSize,
+					onProgress: (p, name) => {
+						// Remotion 预渲染占 8%-20% 的进度
+						const adjustedProgress = 0.08 + p * 0.12;
+						onProgress?.({ progress: adjustedProgress });
+					},
+				});
+
+				console.log(`✅ Remotion 组件预渲染完成`);
+				console.log(`📦 预渲染缓存统计:`);
+				for (const [elementId, cache] of remotionFrameCaches) {
+					console.log(`  - ${elementId}: ${cache.size} 帧`);
+				}
+			}
+
 			const scene = buildScene({
 				tracks,
 				mediaAssets,
 				duration,
 				canvasSize,
 				background: activeProject.settings.background,
+				remotionFrameCaches,
 			});
 
 			const exporter = new SceneExporter({
@@ -125,5 +159,23 @@ export class RendererManager {
 
 	private notify(): void {
 		this.listeners.forEach((fn) => fn());
+	}
+
+	/**
+	 * 收集所有可见的 Remotion 元素
+	 */
+	private collectRemotionElements(tracks: TimelineTrack[]): RemotionElement[] {
+		const elements: RemotionElement[] = [];
+		for (const track of tracks) {
+			if (track.type !== "remotion") continue;
+			if (track.hidden) continue;
+
+			for (const element of track.elements) {
+				if (!element.hidden) {
+					elements.push(element as RemotionElement);
+				}
+			}
+		}
+		return elements;
 	}
 }
