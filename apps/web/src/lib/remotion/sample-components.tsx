@@ -15,7 +15,7 @@ interface NeonTextProps {
 
 const NeonText: React.FC<NeonTextProps> = ({
 	text = "Hello World",
-	color = "#ff00ff",
+	color = "ff00ff",
 	fontSize = 48,
 	__remotion_frame = 0,
 }) => {

@@ -60,8 +60,8 @@ export function RemotionProperties({
 							<PropertyItemValue>
 								{prop.type === "color" && (
 									<ColorPicker
-										value={value as string}
-										onChange={(color) => handlePropChange(prop.key, color)}
+										value={(value as string).replace("#", "")}
+										onChange={(color) => handlePropChange(prop.key, `#${color}`)}
 									/>
 								)}
 								{prop.type === "boolean" && (

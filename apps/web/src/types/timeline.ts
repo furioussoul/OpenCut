@@ -131,6 +131,7 @@ export interface StickerElement extends BaseTimelineElement {
 export interface RemotionElement extends BaseTimelineElement {
 	type: "remotion";
 	componentId: string;
+	color: string;
 	props: Record<string, unknown>;
 	hidden?: boolean;
 	transform: Transform;
