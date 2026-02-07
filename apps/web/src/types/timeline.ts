@@ -136,8 +136,6 @@ export interface RemotionElement extends BaseTimelineElement {
 	hidden?: boolean;
 	transform: Transform;
 	opacity: number;
-	/** AI 生成的源代码（可选，用于重新编辑） */
-	sourceCode?: string;
 }
 
 export type TimelineElement =
