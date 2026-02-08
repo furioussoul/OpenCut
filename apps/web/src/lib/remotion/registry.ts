@@ -28,9 +28,7 @@ export function registerRemotionComponent(
 /**
  * 获取已注册的组件
  */
-export function getRemotionComponent(
-	id: string,
-): React.FC<any> | undefined {
+export function getRemotionComponent(id: string): React.FC<any> | undefined {
 	return componentRegistry.get(id);
 }
 

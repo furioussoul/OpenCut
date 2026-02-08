@@ -22,7 +22,7 @@ export class RemotionManager {
 	// ============ 组件管理 API ============
 
 	/**
-	 * 加载项目的所有组件并添加到 Timeline
+	 * 加载项目的所有组件（只注册，不添加到 Timeline）
 	 */
 	async loadProjectComponents(): Promise<void> {
 		console.log("[RemotionManager] Loading project components...");
@@ -34,11 +34,18 @@ export class RemotionManager {
 			for (const component of components) {
 				try {
 					await this.loadAndRegisterComponent(component.name);
-					// 自动添加到 Timeline
-					await this.addComponentToTimeline(component.name);
 				} catch (error) {
 					console.error(`Failed to load component ${component.name}:`, error);
 				}
+			}
+
+			// DEBUG: 自动添加第一个组件到 timeline 用于测试
+			if (components.length > 0) {
+				const firstComponent = components[0].name;
+				console.log(
+					`[RemotionManager] DEBUG: Auto-adding first component to timeline: ${firstComponent}`,
+				);
+				await this.addComponentToTimeline(firstComponent);
 			}
 		} catch (error) {
 			console.error("Failed to load components:", error);
@@ -100,10 +107,14 @@ export class RemotionManager {
 	/**
 	 * 添加组件到 Timeline
 	 */
-	private async addComponentToTimeline(componentName: string): Promise<void> {
+	async addComponentToTimeline(componentName: string): Promise<void> {
 		const currentTime = this.editor.playback.getCurrentTime();
 		const meta = this.getComponentMeta(componentName);
 		const duration = meta?.defaultDuration || 5;
+
+		console.log(
+			`[RemotionManager] Adding component to timeline: ${componentName}, duration: ${duration}`,
+		);
 
 		this.editor.timeline.insertElement({
 			element: {

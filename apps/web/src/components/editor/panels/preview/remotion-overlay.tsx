@@ -7,7 +7,7 @@ import {
 	useCallback,
 	useRef,
 	useEffect,
-	createContext,
+	Component as ReactComponent,
 } from "react";
 import { Internals } from "remotion";
 import { useEditor } from "@/hooks/use-editor";
@@ -22,6 +22,61 @@ import type { ComponentMeta } from "@/lib/remotion/types";
 // 生成一个稳定的 rootId 和 compositionId
 const PREVIEW_ROOT_ID = "opencut-preview";
 const PREVIEW_COMPOSITION_ID = "opencut-preview-composition";
+
+/**
+ * 错误边界组件 - 捕获子组件渲染时的错误
+ */
+class ComponentErrorBoundary extends ReactComponent<
+	{ children: React.ReactNode; componentId: string },
+	{ hasError: boolean; error: Error | null }
+> {
+	constructor(props: { children: React.ReactNode; componentId: string }) {
+		super(props);
+		this.state = { hasError: false, error: null };
+	}
+
+	static getDerivedStateFromError(error: Error) {
+		return { hasError: true, error };
+	}
+
+	componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+		console.error(
+			"[ComponentErrorBoundary] Error in component:",
+			this.props.componentId,
+			error,
+			errorInfo,
+		);
+	}
+
+	render() {
+		if (this.state.hasError) {
+			return (
+				<div
+					style={{
+						position: "absolute",
+						inset: 0,
+						backgroundColor: "rgba(255, 0, 0, 0.8)",
+						color: "white",
+						padding: 20,
+						display: "flex",
+						flexDirection: "column",
+						alignItems: "center",
+						justifyContent: "center",
+					}}
+				>
+					<div style={{ fontSize: 18, fontWeight: "bold", marginBottom: 10 }}>
+						组件渲染错误
+					</div>
+					<div style={{ fontSize: 14 }}>
+						{this.state.error?.message || "未知错误"}
+					</div>
+				</div>
+			);
+		}
+
+		return this.props.children;
+	}
+}
 
 /**
  * Remotion 上下文包装器
@@ -46,9 +101,10 @@ function RemotionContextWrapper({
 }) {
 	// ========== Timeline 上下文 ==========
 	// 提供 frame 信息给 useCurrentFrame()
+	// 注意：frame 对象的 key 必须是 composition 的 id，而不是 rootId
 	const timelineContextValue = useMemo(
 		() => ({
-			frame: { [PREVIEW_ROOT_ID]: frame },
+			frame: { [PREVIEW_COMPOSITION_ID]: frame },
 			playing: false,
 			playbackRate: 1,
 			rootId: PREVIEW_ROOT_ID,
@@ -231,14 +287,37 @@ export function RemotionOverlay() {
 	const currentTime = editor.playback.getCurrentTime();
 	const activeProject = editor.project.getActive();
 
-	// 查找当前时间点的 Remotion 元素
-	const activeRemotionData = useMemo(
-		() => getActiveRemotionElement(tracks, currentTime),
-		[tracks, currentTime],
+	// 订阅 RemotionManager 的变化，当组件注册/注销时重新渲染
+	const [, forceUpdate] = useState(0);
+	useEffect(() => {
+		const unsubscribe = editor.remotion.subscribe(() => {
+			console.log("[RemotionOverlay] RemotionManager changed, forcing update");
+			forceUpdate((n) => n + 1);
+		});
+		return unsubscribe;
+	}, [editor.remotion]);
+
+	// DEBUG: 检查轨道状态
+	const remotionTracks = tracks.filter((t) => t.type === "remotion");
+	console.log(
+		"[RemotionOverlay] tracks:",
+		tracks.length,
+		"remotion tracks:",
+		remotionTracks.length,
+		"currentTime:",
+		currentTime,
 	);
+
+	// 查找当前时间点的 Remotion 元素
+	const activeRemotionData = getActiveRemotionElement(tracks, currentTime);
+
+	console.log("[RemotionOverlay] activeRemotionData:", activeRemotionData);
 
 	// 如果没有活跃的 Remotion 元素，不渲染任何内容
 	if (!activeRemotionData || !activeProject) {
+		console.log(
+			"[RemotionOverlay] No active remotion element or project, returning null",
+		);
 		return null;
 	}
 
@@ -246,7 +325,17 @@ export function RemotionOverlay() {
 	const Component = getRemotionComponent(element.componentId);
 	const meta = getRemotionComponentMeta(element.componentId);
 
-	if (!Component) return null;
+	console.log(
+		"[RemotionOverlay] element:",
+		element.componentId,
+		"Component:",
+		Component ? "found" : "NOT FOUND",
+	);
+
+	if (!Component) {
+		console.log("[RemotionOverlay] Component not found in registry!");
+		return null;
+	}
 
 	const fps = activeProject.settings.fps;
 	const sync = syncRemotionTime({
@@ -261,28 +350,18 @@ export function RemotionOverlay() {
 		<div
 			className="absolute inset-0 pointer-events-none"
 			style={{
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
+				zIndex: 10,
 			}}
 		>
-			<div
-				className="relative"
-				style={{
-					width: activeProject.settings.canvasSize.width,
-					height: activeProject.settings.canvasSize.height,
-				}}
-			>
-				<RemotionElementWrapper
-					element={element}
-					trackId={trackId}
-					canvasSize={activeProject.settings.canvasSize}
-					currentFrame={sync.frame}
-					fps={fps}
-					Component={Component}
-					meta={meta}
-				/>
-			</div>
+			<RemotionElementWrapper
+				element={element}
+				trackId={trackId}
+				canvasSize={activeProject.settings.canvasSize}
+				currentFrame={sync.frame}
+				fps={fps}
+				Component={Component}
+				meta={meta}
+			/>
 		</div>
 	);
 }
@@ -425,32 +504,37 @@ function RemotionElementWrapper({
 
 	return (
 		<div
-			className="absolute pointer-events-auto"
+			className="absolute inset-0 pointer-events-auto"
 			style={{
-				...transformStyle,
-				cursor: isDragging ? "grabbing" : isPlaying ? "default" : "grab",
-				left: "50%",
-				top: "50%",
-				marginLeft: -canvasSize.width / 2,
-				marginTop: -canvasSize.height / 2,
-				width: canvasSize.width,
-				height: canvasSize.height,
-				display: "flex",
-				alignItems: "center",
-				justifyContent: "center",
+				width: "100%",
+				height: "100%",
+				overflow: "hidden",
 			}}
 			onMouseDown={handleMouseDown}
 		>
-			{/* 渲染 Remotion 组件 - 用上下文包装器提供 hooks 所需的环境 */}
-			<RemotionContextWrapper
-				frame={currentFrame}
-				fps={fps}
-				durationInFrames={durationInFrames}
-				width={canvasSize.width}
-				height={canvasSize.height}
-			>
-				<Component {...element.props} />
-			</RemotionContextWrapper>
+			{/* 渲染 Remotion 组件 */}
+			<ComponentErrorBoundary componentId={element.componentId}>
+				<RemotionContextWrapper
+					frame={currentFrame}
+					fps={fps}
+					durationInFrames={durationInFrames}
+					width={canvasSize.width}
+					height={canvasSize.height}
+				>
+					{/* 使用 100% 填充父容器，内部组件会自适应 */}
+					<div
+						style={{
+							position: "absolute",
+							top: 0,
+							left: 0,
+							width: "100%",
+							height: "100%",
+						}}
+					>
+						<Component {...element.props} />
+					</div>
+				</RemotionContextWrapper>
+			</ComponentErrorBoundary>
 
 			{/* 选中边框和手柄（非播放状态时显示） */}
 			{!isPlaying && (

@@ -143,6 +143,8 @@ export function useComponentSync() {
 			(
 				window as unknown as { __componentSync: ComponentSyncService }
 			).__componentSync = service;
+			// 暴露 editor 供调试
+			(window as unknown as { __editor: typeof editor }).__editor = editor;
 		}
 
 		return () => {
@@ -151,6 +153,7 @@ export function useComponentSync() {
 			if (typeof window !== "undefined") {
 				delete (window as unknown as { __componentSync?: ComponentSyncService })
 					.__componentSync;
+				delete (window as unknown as { __editor?: typeof editor }).__editor;
 			}
 		};
 	}, [editor]);
