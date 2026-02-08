@@ -291,33 +291,16 @@ export function RemotionOverlay() {
 	const [, forceUpdate] = useState(0);
 	useEffect(() => {
 		const unsubscribe = editor.remotion.subscribe(() => {
-			console.log("[RemotionOverlay] RemotionManager changed, forcing update");
 			forceUpdate((n) => n + 1);
 		});
 		return unsubscribe;
 	}, [editor.remotion]);
 
-	// DEBUG: 检查轨道状态
-	const remotionTracks = tracks.filter((t) => t.type === "remotion");
-	console.log(
-		"[RemotionOverlay] tracks:",
-		tracks.length,
-		"remotion tracks:",
-		remotionTracks.length,
-		"currentTime:",
-		currentTime,
-	);
-
 	// 查找当前时间点的 Remotion 元素
 	const activeRemotionData = getActiveRemotionElement(tracks, currentTime);
 
-	console.log("[RemotionOverlay] activeRemotionData:", activeRemotionData);
-
 	// 如果没有活跃的 Remotion 元素，不渲染任何内容
 	if (!activeRemotionData || !activeProject) {
-		console.log(
-			"[RemotionOverlay] No active remotion element or project, returning null",
-		);
 		return null;
 	}
 
@@ -325,15 +308,7 @@ export function RemotionOverlay() {
 	const Component = getRemotionComponent(element.componentId);
 	const meta = getRemotionComponentMeta(element.componentId);
 
-	console.log(
-		"[RemotionOverlay] element:",
-		element.componentId,
-		"Component:",
-		Component ? "found" : "NOT FOUND",
-	);
-
 	if (!Component) {
-		console.log("[RemotionOverlay] Component not found in registry!");
 		return null;
 	}
 

@@ -23,42 +23,10 @@ const particles = Array.from({ length: 50 }, (_, i) => ({
 
 export default function GoldenDust() {
 	const frame = useCurrentFrame();
-	const { height, durationInFrames, width } = useVideoConfig();
-
-	// DEBUG: Log values to verify hooks work
-	console.log(
-		"[GoldenDust] frame:",
-		frame,
-		"height:",
-		height,
-		"durationInFrames:",
-		durationInFrames,
-		"width:",
-		width,
-	);
+	const { height, durationInFrames } = useVideoConfig();
 
 	return (
 		<AbsoluteFill style={{ backgroundColor: "transparent" }}>
-			{/* DEBUG: Simple visible test element */}
-			<div
-				style={{
-					position: "absolute",
-					top: 50,
-					left: 50,
-					width: 200,
-					height: 100,
-					backgroundColor: "red",
-					color: "white",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					fontSize: 24,
-					fontWeight: "bold",
-					zIndex: 1000,
-				}}
-			>
-				Frame: {frame}
-			</div>
 			{particles.map((particle) => {
 				const adjustedFrame = Math.max(0, frame - particle.delay);
 				const y =

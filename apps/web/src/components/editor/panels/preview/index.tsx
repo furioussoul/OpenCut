@@ -47,7 +47,6 @@ function RenderTreeController() {
 }
 
 export function PreviewPanel() {
-	console.log("[PreviewPanel] Rendering");
 	return (
 		<div className="bg-panel relative flex h-full min-h-0 w-full min-w-0 flex-col rounded-sm">
 			<div className="flex min-h-0 min-w-0 flex-1 items-center justify-center p-2">
