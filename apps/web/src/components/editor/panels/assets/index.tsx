@@ -4,6 +4,7 @@ import { Separator } from "@/components/ui/separator";
 import { type Tab, useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { TabBar } from "./tabbar";
 import { Captions } from "./views/captions";
+import { EffectsView } from "./views/effects";
 import { MediaView } from "./views/media";
 import { SettingsView } from "./views/settings";
 import { SoundsView } from "./views/sounds";
@@ -18,11 +19,7 @@ export function AssetsPanel() {
 		sounds: <SoundsView />,
 		text: <TextView />,
 		stickers: <StickersView />,
-		effects: (
-			<div className="text-muted-foreground p-4">
-				Effects view coming soon...
-			</div>
-		),
+		effects: <EffectsView />,
 		transitions: (
 			<div className="text-muted-foreground p-4">
 				Transitions view coming soon...

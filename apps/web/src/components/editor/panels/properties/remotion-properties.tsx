@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import type { RemotionElement } from "@/types/timeline";
-import { PanelBaseView } from "@/components/editor/panels/panel-base-view";
 import {
 	PropertyItem,
 	PropertyItemLabel,
@@ -12,7 +11,6 @@ import { Slider } from "@/components/ui/slider";
 import { Input } from "@/components/ui/input";
 import { useEditor } from "@/hooks/use-editor";
 import { getRemotionComponentMeta } from "@/lib/remotion/registry";
-import type { ComponentMeta } from "@/lib/remotion/types";
 
 export function RemotionProperties({
 	element,
@@ -26,11 +24,12 @@ export function RemotionProperties({
 
 	if (!meta) {
 		return (
-			<PanelBaseView title="Remotion Element">
-				<div className="flex flex-col gap-4 p-4 text-sm text-muted-foreground">
+			<div className="flex flex-col gap-4 p-4">
+				<div className="text-sm font-medium">Remotion Element</div>
+				<div className="text-sm text-muted-foreground">
 					No editable properties for this component.
 				</div>
-			</PanelBaseView>
+			</div>
 		);
 	}
 
@@ -49,10 +48,19 @@ export function RemotionProperties({
 	);
 
 	return (
-		<PanelBaseView title={meta.name} description={meta.description}>
-			<div className="flex flex-col gap-4 p-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+		<div className="flex flex-col gap-4 p-4">
+			<div className="space-y-1">
+				<div className="text-sm font-medium">{meta.name}</div>
+				{meta.description && (
+					<div className="text-xs text-muted-foreground">
+						{meta.description}
+					</div>
+				)}
+			</div>
+			<div className="flex flex-col gap-4 overflow-y-auto max-h-[calc(100vh-200px)]">
 				{meta.editableProps.map((prop) => {
-					const value = (element.props?.[prop.key] as unknown) ?? prop.defaultValue;
+					const value =
+						(element.props?.[prop.key] as unknown) ?? prop.defaultValue;
 
 					return (
 						<PropertyItem key={prop.key}>
@@ -61,13 +69,17 @@ export function RemotionProperties({
 								{prop.type === "color" && (
 									<ColorPicker
 										value={(value as string).replace("#", "")}
-										onChange={(color) => handlePropChange(prop.key, `#${color}`)}
+										onChange={(color) =>
+											handlePropChange(prop.key, `#${color}`)
+										}
 									/>
 								)}
 								{prop.type === "boolean" && (
 									<Switch
 										checked={value as boolean}
-										onCheckedChange={(checked) => handlePropChange(prop.key, checked)}
+										onCheckedChange={(checked) =>
+											handlePropChange(prop.key, checked)
+										}
 									/>
 								)}
 								{prop.type === "string" && (
@@ -97,6 +109,6 @@ export function RemotionProperties({
 					);
 				})}
 			</div>
-		</PanelBaseView>
+		</div>
 	);
 }
