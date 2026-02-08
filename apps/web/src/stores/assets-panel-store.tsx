@@ -11,10 +11,12 @@ import {
 	Settings01Icon,
 	SlidersHorizontalIcon,
 	ColorsIcon,
+	AiChat02Icon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 export const TAB_KEYS = [
+	"ai-assistant",
 	"media",
 	"sounds",
 	"text",
@@ -36,6 +38,10 @@ const createHugeiconsIcon =
 	);
 
 export const tabs = {
+	"ai-assistant": {
+		icon: createHugeiconsIcon({ icon: AiChat02Icon }),
+		label: "AI Assistant",
+	},
 	media: {
 		icon: createHugeiconsIcon({ icon: Folder03Icon }),
 		label: "Media",

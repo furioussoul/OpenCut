@@ -3,6 +3,7 @@
 import { Separator } from "@/components/ui/separator";
 import { type Tab, useAssetsPanelStore } from "@/stores/assets-panel-store";
 import { TabBar } from "./tabbar";
+import { AIAssistantView } from "./views/ai-assistant";
 import { Captions } from "./views/captions";
 import { EffectsView } from "./views/effects";
 import { MediaView } from "./views/media";
@@ -15,6 +16,7 @@ export function AssetsPanel() {
 	const { activeTab } = useAssetsPanelStore();
 
 	const viewMap: Record<Tab, React.ReactNode> = {
+		"ai-assistant": <AIAssistantView />,
 		media: <MediaView />,
 		sounds: <SoundsView />,
 		text: <TextView />,
