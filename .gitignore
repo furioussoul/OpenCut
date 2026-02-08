@@ -20,3 +20,4 @@ bun.lock
 .idea
 apps/web/public/demo.mp4
 apps/web/tsconfig.tsbuildinfo
+opencode.json
