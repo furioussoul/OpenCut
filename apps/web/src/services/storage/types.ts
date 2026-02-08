@@ -28,6 +28,13 @@ export interface MediaAssetData {
 	thumbnailUrl?: string;
 }
 
+export interface RemotionComponentData {
+	id: string;
+	meta: any; // ComponentMeta
+	code?: string;
+	updatedAt: string;
+}
+
 export type SerializedScene = Omit<TScene, "createdAt" | "updatedAt"> & {
 	createdAt: string;
 	updatedAt: string;

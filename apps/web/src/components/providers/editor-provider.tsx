@@ -9,7 +9,6 @@ import {
 	useKeybindingDisabler,
 } from "@/hooks/use-keybindings";
 import { useEditorActions } from "@/hooks/actions/use-editor-actions";
-import { registerSampleComponents } from "@/lib/remotion/sample-components";
 
 interface EditorProviderProps {
 	projectId: string;
@@ -119,45 +118,6 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 function EditorRuntimeBindings() {
 	const editor = useEditor();
-
-	// 注册 Remotion 示例组件（仅在首次加载时）
-	useEffect(() => {
-		registerSampleComponents();
-
-		// 添加一个测试用的 Remotion 轨道（如果还没有的话）
-		const tracks = editor.timeline.getTracks();
-		const hasRemotionTrack = tracks.some((t) => t.type === "remotion");
-
-		if (!hasRemotionTrack) {
-			console.log("🎬 添加测试用 Remotion 轨道...");
-
-			// 添加 Remotion 轨道
-			editor.timeline.addTrack({ type: "remotion" as any });
-
-			// 获取新创建的轨道
-			const newTracks = editor.timeline.getTracks();
-			const remotionTrack = newTracks.find((t) => t.type === "remotion");
-
-			if (remotionTrack) {
-				// 手动添加一个测试元素
-				(remotionTrack as any).elements.push({
-					id: "test-remotion-element-1",
-					type: "remotion",
-					name: "霓虹文字测试",
-					componentId: "neon-text",
-					props: { text: "Hello Remotion!", color: "#ff00ff", fontSize: 48 },
-					startTime: 2,
-					duration: 5,
-					trimStart: 0,
-					trimEnd: 0,
-					transform: { scale: 1, position: { x: 0, y: 0 }, rotate: 0 },
-					opacity: 1,
-				});
-
-				console.log("✅ 测试 Remotion 元素已添加（从第 2 秒到第 7 秒）");
-			}
-		}
-	}, [editor]);
 
 	useEffect(() => {
 		const handleBeforeUnload = (event: BeforeUnloadEvent) => {

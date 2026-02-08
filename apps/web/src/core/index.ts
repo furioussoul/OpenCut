@@ -8,6 +8,7 @@ import { CommandManager } from "./managers/commands";
 import { SaveManager } from "./managers/save-manager";
 import { AudioManager } from "./managers/audio-manager";
 import { SelectionManager } from "./managers/selection-manager";
+import { RemotionManager } from "./managers/remotion-manager";
 
 export class EditorCore {
 	private static instance: EditorCore | null = null;
@@ -22,6 +23,7 @@ export class EditorCore {
 	public readonly save: SaveManager;
 	public readonly audio: AudioManager;
 	public readonly selection: SelectionManager;
+	public readonly remotion: RemotionManager;
 
 	private constructor() {
 		this.command = new CommandManager();
@@ -34,6 +36,7 @@ export class EditorCore {
 		this.save = new SaveManager(this);
 		this.audio = new AudioManager(this);
 		this.selection = new SelectionManager(this);
+		this.remotion = new RemotionManager(this);
 		this.save.start();
 	}
 

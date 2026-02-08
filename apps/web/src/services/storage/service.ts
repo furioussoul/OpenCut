@@ -8,6 +8,7 @@ import type {
 	StorageConfig,
 	SerializedProject,
 	SerializedScene,
+	RemotionComponentData,
 } from "./types";
 import type { SavedSoundsData, SavedSound, SoundEffect } from "@/types/sounds";
 import {
@@ -62,9 +63,46 @@ class StorageService {
 			this.config.version,
 		);
 
+		const remotionAdapter = new IndexedDBAdapter<RemotionComponentData>(
+			`${this.config.mediaDb}-${projectId}`,
+			"remotion-components",
+			this.config.version,
+		);
+
 		const mediaAssetsAdapter = new OPFSAdapter(`media-files-${projectId}`);
 
-		return { mediaMetadataAdapter, mediaAssetsAdapter };
+		return { mediaMetadataAdapter, mediaAssetsAdapter, remotionAdapter };
+	}
+
+	async saveRemotionComponent({
+		projectId,
+		component,
+	}: {
+		projectId: string;
+		component: RemotionComponentData;
+	}): Promise<void> {
+		const { remotionAdapter } = this.getProjectMediaAdapters({ projectId });
+		await remotionAdapter.set(component.id, component);
+	}
+
+	async loadAllRemotionComponents({
+		projectId,
+	}: {
+		projectId: string;
+	}): Promise<RemotionComponentData[]> {
+		const { remotionAdapter } = this.getProjectMediaAdapters({ projectId });
+		return remotionAdapter.getAll();
+	}
+
+	async deleteRemotionComponent({
+		projectId,
+		id,
+	}: {
+		projectId: string;
+		id: string;
+	}): Promise<void> {
+		const { remotionAdapter } = this.getProjectMediaAdapters({ projectId });
+		await remotionAdapter.remove(id);
 	}
 
 	private stripAudioBuffers({

@@ -99,6 +99,7 @@ export class ProjectManager {
 		this.notify();
 
 		this.editor.media.clearAllAssets();
+		this.editor.remotion.clearAll();
 		this.editor.scenes.initializeScenes({
 			scenes: newProject.scenes,
 			currentSceneId: newProject.currentSceneId,
@@ -145,6 +146,7 @@ export class ProjectManager {
 			}
 
 			await this.editor.media.loadProjectMedia({ projectId: id });
+			await this.editor.remotion.loadProjectComponents(id);
 
 			if (!project.metadata.thumbnail) {
 				const didUpdateThumbnail = await this.updateThumbnailFromTimeline();
@@ -234,6 +236,7 @@ export class ProjectManager {
 			if (shouldClearActive) {
 				this.active = null;
 				this.editor.media.clearAllAssets();
+				this.editor.remotion.clearAll();
 				this.editor.scenes.clearScenes();
 			}
 
@@ -248,6 +251,7 @@ export class ProjectManager {
 		this.notify();
 
 		this.editor.media.clearAllAssets();
+		this.editor.remotion.clearAll();
 		this.editor.scenes.clearScenes();
 	}
 
