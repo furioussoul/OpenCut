@@ -23,21 +23,3 @@ export interface RemotionComponentProps {
 	__remotion_fps: number;
 	__remotion_duration: number;
 }
-
-// ============ 转场组件类型 ============
-
-export type TransitionType = "in" | "out" | "both";
-
-export interface TransitionMeta extends ComponentMeta {
-	/** 转场类型：入场、出场、或两者皆可 */
-	transitionType: TransitionType;
-	/** 推荐时长（秒） */
-	defaultDuration: number;
-}
-
-export interface TransitionComponentProps extends RemotionComponentProps {
-	/** 转场进度 0-1 */
-	__transition_progress: number;
-	/** 转场方向：in=入场, out=出场 */
-	__transition_direction: "in" | "out";
-}
