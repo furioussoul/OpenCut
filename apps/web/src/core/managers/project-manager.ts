@@ -146,7 +146,7 @@ export class ProjectManager {
 			}
 
 			await this.editor.media.loadProjectMedia({ projectId: id });
-			await this.editor.remotion.loadProjectComponents(id);
+			// 注：组件加载已移至 ComponentSyncService，项目加载时不再需要手动加载
 
 			if (!project.metadata.thumbnail) {
 				const didUpdateThumbnail = await this.updateThumbnailFromTimeline();

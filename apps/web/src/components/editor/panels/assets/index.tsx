@@ -16,7 +16,7 @@ export function AssetsPanel() {
 	const { activeTab } = useAssetsPanelStore();
 
 	const viewMap: Record<Tab, React.ReactNode> = {
-		"ai-assistant": <AIAssistantView />,
+		assistant: <AIAssistantView />,
 		media: <MediaView />,
 		sounds: <SoundsView />,
 		text: <TextView />,

@@ -17,15 +17,11 @@ export function AIAssistantView() {
 	const [inputValue, setInputValue] = useState("");
 	const [isLoading, setIsLoading] = useState(false);
 	const [currentTask, setCurrentTask] = useState<AgentTask | null>(null);
+	const [streamingContent, setStreamingContent] = useState("");
 	const scrollRef = useRef<HTMLDivElement>(null);
 
 	// 订阅 Agent 事件
 	useEffect(() => {
-		const unsubMessage = aiAgentService.on("message", (data) => {
-			const msg = data as ChatMessage;
-			setMessages((prev) => [...prev, msg]);
-		});
-
 		const unsubTask = aiAgentService.on("task-update", (data) => {
 			setCurrentTask(data as AgentTask);
 		});
@@ -36,7 +32,6 @@ export function AIAssistantView() {
 		});
 
 		return () => {
-			unsubMessage();
 			unsubTask();
 			unsubError();
 		};
@@ -47,7 +42,7 @@ export function AIAssistantView() {
 		if (scrollRef.current) {
 			scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
 		}
-	}, [messages]);
+	}, [messages, streamingContent]);
 
 	const handleSend = useCallback(async () => {
 		const message = inputValue.trim();
@@ -64,9 +59,24 @@ export function AIAssistantView() {
 		setMessages((prev) => [...prev, userMessage]);
 		setInputValue("");
 		setIsLoading(true);
+		setStreamingContent("");
 
 		try {
-			await aiAgentService.sendMessage(message);
+			// 使用 SSE 流式接收响应
+			const fullContent = await aiAgentService.sendMessage(message, (delta) => {
+				setStreamingContent((prev) => prev + delta);
+			});
+
+			// 流结束后，添加完整的助手消息
+			const assistantMessage: ChatMessage = {
+				id: `msg_${Date.now()}`,
+				role: "assistant",
+				content: fullContent,
+				timestamp: Date.now(),
+				status: "complete",
+			};
+			setMessages((prev) => [...prev, assistantMessage]);
+			setStreamingContent("");
 		} catch (error) {
 			console.error("Failed to send message:", error);
 			// 添加错误消息
@@ -99,6 +109,7 @@ export function AIAssistantView() {
 		aiAgentService.resetConversation();
 		setMessages([]);
 		setCurrentTask(null);
+		setStreamingContent("");
 	}, []);
 
 	return (
@@ -120,14 +131,24 @@ export function AIAssistantView() {
 
 			{/* 消息列表 */}
 			<ScrollArea className="flex-1 p-4" ref={scrollRef}>
-				{messages.length === 0 ? (
+				{messages.length === 0 && !streamingContent ? (
 					<EmptyState />
 				) : (
 					<div className="flex flex-col gap-4">
 						{messages.map((msg) => (
 							<MessageBubble key={msg.id} message={msg} />
 						))}
-						{isLoading && <LoadingIndicator />}
+						{/* 流式内容显示 */}
+						{streamingContent && (
+							<div className="flex justify-start">
+								<div className="max-w-[80%] rounded-lg bg-muted px-4 py-2 text-foreground">
+									<p className="text-sm whitespace-pre-wrap">
+										{streamingContent}
+									</p>
+								</div>
+							</div>
+						)}
+						{isLoading && !streamingContent && <LoadingIndicator />}
 					</div>
 				)}
 
@@ -144,7 +165,7 @@ export function AIAssistantView() {
 						value={inputValue}
 						onChange={(e) => setInputValue(e.target.value)}
 						onKeyDown={handleKeyDown}
-						placeholder="输入剪辑指令，如：帮我剪一个30秒抖音视频..."
+						placeholder="输入指令，如：帮我创建一个金粉特效..."
 						disabled={isLoading}
 						className="flex-1"
 					/>
@@ -156,7 +177,7 @@ export function AIAssistantView() {
 					</Button>
 				</div>
 				<p className="mt-2 text-xs text-muted-foreground">
-					提示: 可以粘贴 YouTube 链接，AI 会自动下载并剪辑
+					提示: 试试说 "创建金粉特效"、"创建文字动画"、"创建霓虹效果"
 				</p>
 			</div>
 		</div>
@@ -179,9 +200,9 @@ function EmptyState() {
 				</p>
 			</div>
 			<div className="mt-4 grid gap-2 text-sm">
-				<ExamplePrompt text="帮我把这个视频剪成30秒抖音，突出精彩片段" />
-				<ExamplePrompt text="下载这个 YouTube 视频，加上金粉特效" />
-				<ExamplePrompt text="分析这个视频，找出最搞笑的3个片段" />
+				<ExamplePrompt text="帮我创建一个金粉特效" />
+				<ExamplePrompt text="创建文字动画效果" />
+				<ExamplePrompt text="添加霓虹灯效果" />
 			</div>
 		</div>
 	);

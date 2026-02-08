@@ -1,6 +1,6 @@
 /**
  * AI Agent Service
- * 负责与后端 Agent API 通信，并执行自动剪辑任务
+ * 负责与后端 Agent API 通信（SSE），并执行自动剪辑任务
  */
 
 import { EditorCore } from "@/core";
@@ -13,10 +13,20 @@ import type {
 	AgentTaskResult,
 	DownloadedMedia,
 	GeneratedEffect,
+	ChatMessage,
 } from "./types";
 import { compileEffectCode } from "./effect-compiler";
 
-type AgentEventType = "message" | "task-update" | "error";
+type AgentEventType =
+	| "message.start"
+	| "message.delta"
+	| "message.complete"
+	| "component.created"
+	| "component.updated"
+	| "component.deleted"
+	| "task-update"
+	| "error";
+
 type AgentEventListener = (data: unknown) => void;
 
 // OPFS 适配器用于存储大文件
@@ -29,17 +39,31 @@ class AIAgentService {
 
 	constructor() {
 		// 初始化事件监听器集合
-		this.listeners.set("message", new Set());
-		this.listeners.set("task-update", new Set());
-		this.listeners.set("error", new Set());
+		const events: AgentEventType[] = [
+			"message.start",
+			"message.delta",
+			"message.complete",
+			"component.created",
+			"component.updated",
+			"component.deleted",
+			"task-update",
+			"error",
+		];
+		for (const event of events) {
+			this.listeners.set(event, new Set());
+		}
 	}
 
 	/**
-	 * 发送消息给 AI Agent
+	 * 发送消息给 AI Agent (SSE 流式)
 	 * @param message 用户消息
-	 * @returns Agent 响应
+	 * @param onDelta 收到增量内容时的回调
+	 * @returns 完整的响应内容
 	 */
-	async sendMessage(message: string): Promise<AgentChatResponse> {
+	async sendMessage(
+		message: string,
+		onDelta?: (content: string) => void,
+	): Promise<string> {
 		const request: AgentChatRequest = {
 			message,
 			conversationId: this.conversationId ?? undefined,
@@ -56,26 +80,143 @@ class AIAgentService {
 				throw new Error(`Agent API error: ${response.status}`);
 			}
 
-			const data: AgentChatResponse = await response.json();
+			// 处理 SSE 流
+			const reader = response.body?.getReader();
+			if (!reader) {
+				throw new Error("No response body");
+			}
 
-			this.conversationId = data.conversationId;
+			const decoder = new TextDecoder();
+			let fullContent = "";
+			let buffer = "";
 
-			// 如果有任务，开始执行
-			if (data.task) {
-				this.currentTask = data.task;
-				this.emit("task-update", data.task);
+			while (true) {
+				const { done, value } = await reader.read();
+				if (done) break;
 
-				// 任务完成后自动导入
-				if (data.task.status === "complete" && data.task.result) {
-					await this.importTaskResult(data.task.result);
+				buffer += decoder.decode(value, { stream: true });
+
+				// 解析 SSE 事件
+				const lines = buffer.split("\n");
+				buffer = lines.pop() || ""; // 保留不完整的行
+
+				let currentEvent = "";
+				for (const line of lines) {
+					if (line.startsWith("event: ")) {
+						currentEvent = line.slice(7);
+					} else if (line.startsWith("data: ") && currentEvent) {
+						const data = JSON.parse(line.slice(6));
+						this.handleSSEEvent(currentEvent, data, (content) => {
+							fullContent += content;
+							onDelta?.(content);
+						});
+						currentEvent = "";
+					}
 				}
 			}
 
-			this.emit("message", data.message);
-			return data;
+			return fullContent;
 		} catch (error) {
 			this.emit("error", error);
 			throw error;
+		}
+	}
+
+	/**
+	 * 处理 SSE 事件
+	 */
+	private handleSSEEvent(
+		event: string,
+		data: unknown,
+		onDelta: (content: string) => void,
+	): void {
+		switch (event) {
+			case "message.start":
+				this.emit("message.start", data);
+				break;
+
+			case "message.delta": {
+				const deltaData = data as { content?: string };
+				if (deltaData.content) {
+					onDelta(deltaData.content);
+				}
+				this.emit("message.delta", data);
+				break;
+			}
+
+			case "message.complete":
+				this.emit("message.complete", data);
+				break;
+
+			case "component.created":
+				console.log("[AIAgentService] Component created:", data);
+				this.emit("component.created", data);
+				// 通知 RemotionManager 加载新组件
+				this.handleComponentCreated(data as { componentName: string });
+				break;
+
+			case "component.updated":
+				console.log("[AIAgentService] Component updated:", data);
+				this.emit("component.updated", data);
+				this.handleComponentUpdated(data as { componentName: string });
+				break;
+
+			case "component.deleted":
+				console.log("[AIAgentService] Component deleted:", data);
+				this.emit("component.deleted", data);
+				this.handleComponentDeleted(data as { componentName: string });
+				break;
+
+			case "file.write.start":
+			case "file.write.complete":
+				// 文件写入事件，可用于 UI 显示进度
+				console.log(`[AIAgentService] ${event}:`, data);
+				break;
+
+			default:
+				console.log(`[AIAgentService] Unknown event: ${event}`, data);
+		}
+	}
+
+	/**
+	 * 处理组件创建事件
+	 */
+	private async handleComponentCreated(data: {
+		componentName: string;
+	}): Promise<void> {
+		try {
+			const editor = EditorCore.getInstance();
+			await editor.remotion.onComponentCreated(data.componentName);
+		} catch (error) {
+			console.error("Failed to handle component creation:", error);
+		}
+	}
+
+	/**
+	 * 处理组件更新事件
+	 */
+	private async handleComponentUpdated(data: {
+		componentName: string;
+	}): Promise<void> {
+		try {
+			const editor = EditorCore.getInstance();
+			await editor.remotion.onComponentUpdated(data.componentName);
+		} catch (error) {
+			console.error("Failed to handle component update:", error);
+		}
+	}
+
+	/**
+	 * 处理组件删除事件
+	 */
+	private async handleComponentDeleted(data: {
+		componentName: string;
+	}): Promise<void> {
+		try {
+			const editor = EditorCore.getInstance();
+			await editor.remotion.onComponentDeleted(data.componentName);
+		} catch (error) {
+			console.error("Failed to handle component deletion:", error);
 		}
 	}
 
@@ -94,9 +235,9 @@ class AIAgentService {
 			// Step 3: 创建时间线
 			await this.createTimeline(result.projectData, mediaIdMap);
 
-			console.log("✅ Agent 任务结果已成功导入编辑器");
+			console.log("Agent 任务结果已成功导入编辑器");
 		} catch (error) {
-			console.error("❌ 导入 Agent 任务结果失败:", error);
+			console.error("导入 Agent 任务结果失败:", error);
 			throw error;
 		}
 	}
@@ -150,7 +291,7 @@ class AIAgentService {
 				if (OPFSAdapter.isSupported() && file.size > 5 * 1024 * 1024) {
 					await opfsAdapter.set(storageKey, file);
 					console.log(
-						`📦 大文件已存储到 OPFS: ${media.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`,
+						`大文件已存储到 OPFS: ${media.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`,
 					);
 				}
 
@@ -173,10 +314,10 @@ class AIAgentService {
 						mediaIdMap.set(media.id, importedAsset.id);
 					}
 
-					console.log(`✅ 媒体文件已导入: ${media.name}`);
+					console.log(`媒体文件已导入: ${media.name}`);
 				}
 			} catch (error) {
-				console.error(`❌ 导入媒体文件失败: ${media.name}`, error);
+				console.error(`导入媒体文件失败: ${media.name}`, error);
 			}
 		}
 
@@ -200,10 +341,10 @@ class AIAgentService {
 						description: effect.description,
 						editableProps: effect.editableProps,
 					});
-					console.log(`✅ 特效组件已注册: ${effect.name}`);
+					console.log(`特效组件已注册: ${effect.name}`);
 				}
 			} catch (error) {
-				console.error(`❌ 注册特效组件失败: ${effect.name}`, error);
+				console.error(`注册特效组件失败: ${effect.name}`, error);
 			}
 		}
 	}
@@ -272,7 +413,7 @@ class AIAgentService {
 			}
 		}
 
-		console.log("✅ 时间线已创建");
+		console.log("时间线已创建");
 	}
 
 	/**

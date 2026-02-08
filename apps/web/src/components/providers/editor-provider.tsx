@@ -9,6 +9,7 @@ import {
 	useKeybindingDisabler,
 } from "@/hooks/use-keybindings";
 import { useEditorActions } from "@/hooks/actions/use-editor-actions";
+import { useComponentSync } from "@/services/component-sync";
 
 interface EditorProviderProps {
 	projectId: string;
@@ -118,6 +119,9 @@ export function EditorProvider({ projectId, children }: EditorProviderProps) {
 
 function EditorRuntimeBindings() {
 	const editor = useEditor();
+
+	// 组件同步服务（加载已有组件 + 监听事件）
+	useComponentSync();
 
 	useEffect(() => {
 		const handleBeforeUnload = (event: BeforeUnloadEvent) => {

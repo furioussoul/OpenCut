@@ -15,6 +15,7 @@ export interface ComponentMeta {
 	name: string;
 	description?: string;
 	editableProps: EditableProp[];
+	defaultDuration?: number;
 }
 
 export interface RemotionComponentProps {

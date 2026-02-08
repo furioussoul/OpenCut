@@ -16,7 +16,7 @@ import {
 import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
 
 export const TAB_KEYS = [
-	"ai-assistant",
+	"assistant",
 	"media",
 	"sounds",
 	"text",
@@ -38,7 +38,7 @@ const createHugeiconsIcon =
 	);
 
 export const tabs = {
-	"ai-assistant": {
+	"assistant": {
 		icon: createHugeiconsIcon({ icon: AiChat02Icon }),
 		label: "AI Assistant",
 	},

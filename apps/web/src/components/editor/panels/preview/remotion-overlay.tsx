@@ -1,6 +1,15 @@
 "use client";
 
-import { useMemo, useState, useCallback, useRef, useEffect } from "react";
+import type React from "react";
+import {
+	useMemo,
+	useState,
+	useCallback,
+	useRef,
+	useEffect,
+	createContext,
+} from "react";
+import { Internals } from "remotion";
 import { useEditor } from "@/hooks/use-editor";
 import {
 	getRemotionComponent,
@@ -9,6 +18,186 @@ import {
 import { syncRemotionTime } from "@/lib/remotion/bridge/time-sync";
 import type { RemotionElement, TimelineTrack } from "@/types/timeline";
 import type { ComponentMeta } from "@/lib/remotion/types";
+
+// 生成一个稳定的 rootId 和 compositionId
+const PREVIEW_ROOT_ID = "opencut-preview";
+const PREVIEW_COMPOSITION_ID = "opencut-preview-composition";
+
+/**
+ * Remotion 上下文包装器
+ * 为动态编译的组件提供 useCurrentFrame() 和 useVideoConfig() 等 hooks 所需的上下文
+ *
+ * 这个包装器模拟了 Remotion 的 Composition 环境，让在编辑器预览中渲染的组件能正常使用 Remotion hooks
+ */
+function RemotionContextWrapper({
+	children,
+	frame,
+	fps,
+	durationInFrames,
+	width,
+	height,
+}: {
+	children: React.ReactNode;
+	frame: number;
+	fps: number;
+	durationInFrames: number;
+	width: number;
+	height: number;
+}) {
+	// ========== Timeline 上下文 ==========
+	// 提供 frame 信息给 useCurrentFrame()
+	const timelineContextValue = useMemo(
+		() => ({
+			frame: { [PREVIEW_ROOT_ID]: frame },
+			playing: false,
+			playbackRate: 1,
+			rootId: PREVIEW_ROOT_ID,
+			imperativePlaying: { current: false },
+			setPlaybackRate: () => {},
+			audioAndVideoTags: { current: [] },
+		}),
+		[frame],
+	);
+
+	// ========== SetTimeline 上下文 ==========
+	const setTimelineContextValue = useMemo(
+		() => ({
+			setFrame: () => {},
+			setPlaying: () => {},
+		}),
+		[],
+	);
+
+	// ========== Composition 元数据 ==========
+	// useVideoConfig() 最终需要这个
+	const videoConfigMetadata = useMemo(
+		() => ({
+			fps,
+			durationInFrames,
+			width,
+			height,
+			defaultCodec: null,
+			props: {},
+			id: PREVIEW_COMPOSITION_ID,
+			defaultProps: {},
+			// Remotion 4.x 需要的额外字段
+			defaultOutName: null,
+		}),
+		[fps, durationInFrames, width, height],
+	);
+
+	// ========== Composition Manager 上下文 ==========
+	// useVideo() 从这里获取 composition 信息
+	const compositionManagerValue = useMemo(
+		() => ({
+			// 当前 composition 的元数据 - useResolvedVideoConfig 会优先使用这个
+			currentCompositionMetadata: videoConfigMetadata,
+			// compositions 列表 - useVideo 需要从这里找到匹配的 composition
+			compositions: [
+				{
+					id: PREVIEW_COMPOSITION_ID,
+					component: () => null,
+					durationInFrames,
+					fps,
+					width,
+					height,
+					defaultProps: {},
+					nonce: 0,
+					parentFolderName: null,
+					schema: null,
+					calculateMetadata: null,
+				},
+			],
+			folders: [],
+			// canvasContent 指向当前 composition
+			canvasContent: {
+				type: "composition" as const,
+				compositionId: PREVIEW_COMPOSITION_ID,
+			},
+			registerComposition: () => {},
+			registerFolder: () => {},
+			unregisterComposition: () => {},
+			unregisterFolder: () => {},
+			currentComposition: PREVIEW_COMPOSITION_ID,
+			setCurrentComposition: () => {},
+			setCurrentCompositionMetadata: () => {},
+			setCanvasContent: () => {},
+		}),
+		[videoConfigMetadata, durationInFrames, fps, width, height],
+	);
+
+	// ========== Sequence 上下文 ==========
+	// Sequence 组件需要这个，null 表示不在 Sequence 内
+	const sequenceContextValue = useMemo(
+		() => ({
+			cumulatedFrom: 0,
+			relativeFrom: 0,
+			parentFrom: 0,
+			durationInFrames,
+			id: "root",
+			width: null,
+			height: null,
+		}),
+		[durationInFrames],
+	);
+
+	// ========== Editor Props 上下文 ==========
+	// useResolvedVideoConfig 需要这个
+	const editorPropsContextValue = useMemo(
+		() => ({
+			props: {},
+		}),
+		[],
+	);
+
+	// ========== ResolveComposition 上下文 ==========
+	const resolveCompositionContextValue = useMemo(
+		() => ({
+			setAssets: () => {},
+			assets: [],
+		}),
+		[],
+	);
+
+	// ========== Nonce 上下文 ==========
+	const nonceContextValue = useMemo(() => 0, []);
+
+	// ========== 获取 Remotion 内部 Context ==========
+	const TimelineContext = Internals.TimelineContext as React.Context<unknown>;
+	const SetTimelineContext =
+		Internals.SetTimelineContext as React.Context<unknown>;
+	const CompositionManager =
+		Internals.CompositionManager as React.Context<unknown>;
+	const SequenceContext = Internals.SequenceContext as React.Context<unknown>;
+	const EditorPropsContext =
+		Internals.EditorPropsContext as React.Context<unknown>;
+	const ResolveCompositionContext =
+		Internals.ResolveCompositionContext as React.Context<unknown>;
+	const NonceContext = Internals.NonceContext as React.Context<unknown>;
+
+	// ========== 渲染 Provider 树 ==========
+	return (
+		<Internals.CanUseRemotionHooks.Provider value>
+			<TimelineContext.Provider value={timelineContextValue}>
+				<SetTimelineContext.Provider value={setTimelineContextValue}>
+					<CompositionManager.Provider value={compositionManagerValue}>
+						<SequenceContext.Provider value={sequenceContextValue}>
+							<EditorPropsContext.Provider value={editorPropsContextValue}>
+								<ResolveCompositionContext.Provider
+									value={resolveCompositionContextValue}
+								>
+									<NonceContext.Provider value={nonceContextValue}>
+										{children}
+									</NonceContext.Provider>
+								</ResolveCompositionContext.Provider>
+							</EditorPropsContext.Provider>
+						</SequenceContext.Provider>
+					</CompositionManager.Provider>
+				</SetTimelineContext.Provider>
+			</TimelineContext.Provider>
+		</Internals.CanUseRemotionHooks.Provider>
+	);
+}
 
 /**
  * 获取当前时间点活跃的 Remotion 元素
@@ -115,7 +304,7 @@ function RemotionElementWrapper({
 	canvasSize: { width: number; height: number };
 	currentFrame: number;
 	fps: number;
-	Component: React.FC<any>;
+	Component: React.FC<Record<string, unknown>>;
 	meta?: ComponentMeta;
 }) {
 	const editor = useEditor();
@@ -231,6 +420,9 @@ function RemotionElementWrapper({
 		opacity: element.opacity,
 	};
 
+	// 计算 durationInFrames
+	const durationInFrames = Math.max(1, Math.round(element.duration * fps));
+
 	return (
 		<div
 			className="absolute pointer-events-auto"
@@ -249,13 +441,16 @@ function RemotionElementWrapper({
 			}}
 			onMouseDown={handleMouseDown}
 		>
-			{/* 渲染 Remotion 组件 */}
-			<Component
-				{...element.props}
-				__remotion_frame={currentFrame}
-				__remotion_fps={fps}
-				__remotion_duration={element.duration}
-			/>
+			{/* 渲染 Remotion 组件 - 用上下文包装器提供 hooks 所需的环境 */}
+			<RemotionContextWrapper
+				frame={currentFrame}
+				fps={fps}
+				durationInFrames={durationInFrames}
+				width={canvasSize.width}
+				height={canvasSize.height}
+			>
+				<Component {...element.props} />
+			</RemotionContextWrapper>
 
 			{/* 选中边框和手柄（非播放状态时显示） */}
 			{!isPlaying && (
@@ -293,7 +488,7 @@ function RemotionEditHandles({
 
 			{/* 组件基础标签 */}
 			<div className="absolute -top-7 left-0 bg-purple-500 text-white text-xs px-2 py-1 rounded whitespace-nowrap shadow-lg">
-				✨ {meta?.name ?? element.componentId}
+				{meta?.name ?? element.componentId}
 				<span className="ml-2 opacity-70">(拖动移动)</span>
 			</div>
 		</>
